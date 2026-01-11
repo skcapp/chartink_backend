@@ -5,7 +5,8 @@ from chartink_fetcher import fetch_stocks
 
 app = FastAPI()
 
-init_db()  # VERY IMPORTANT
+# initialize database
+init_db()
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,8 +17,8 @@ app.add_middleware(
 
 
 @app.get("/")
-def home():
-    return {"status": "RUNNING"}
+def root():
+    return {"status": "Chartink Backend Running"}
 
 
 @app.get("/status/{device_id}")
@@ -31,10 +32,10 @@ def activate_device(data: dict):
     code = data.get("code")
 
     if not device_id or not code:
-        raise HTTPException(400, "Missing data")
+        raise HTTPException(status_code=400, detail="Missing data")
 
     if not activate(device_id, code):
-        raise HTTPException(400, "Invalid or already used code")
+        raise HTTPException(status_code=400, detail="Invalid or used code")
 
     return {"status": "ACTIVE"}
 
@@ -43,5 +44,5 @@ def activate_device(data: dict):
 def stocks(device_id: str):
     state = check_status(device_id)
     if state["status"] == "EXPIRED":
-        raise HTTPException(403, "Trial expired")
+        raise HTTPException(status_code=403, detail="Trial expired")
     return fetch_stocks()

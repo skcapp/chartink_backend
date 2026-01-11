@@ -6,38 +6,32 @@ import requests
 app = FastAPI()
 
 # -----------------------------
-# In-memory database (simple)
+# Activation system
 # -----------------------------
 TRIAL_DAYS = 30
-
 activation_codes = {
     "CHARTINK-001": False,
     "CHARTINK-002": False,
     "CHARTINK-003": False,
 }
-
 devices = {}  # device_id -> expiry_date
 
 
-# -----------------------------
-# Models
-# -----------------------------
 class ActivateRequest(BaseModel):
     device_id: str
     code: str
 
 
-# -----------------------------
-# Root
-# -----------------------------
 @app.get("/")
 def root():
     return {"ok": True, "service": "Chartink Backend"}
 
 
-# -----------------------------
-# Status check
-# -----------------------------
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/status/{device_id}")
 def status(device_id: str):
     if device_id not in devices:
@@ -46,14 +40,10 @@ def status(device_id: str):
     expiry = devices[device_id]
     if datetime.utcnow() > expiry:
         return {"status": "EXPIRED"}
-
     days_left = (expiry - datetime.utcnow()).days
     return {"status": "ACTIVE", "days_left": days_left}
 
 
-# -----------------------------
-# Activation
-# -----------------------------
 @app.post("/activate")
 def activate(req: ActivateRequest):
     code = req.code.strip()
@@ -73,7 +63,7 @@ def activate(req: ActivateRequest):
 
 
 # -----------------------------
-# Chartink Screener
+# Chartink screener
 # -----------------------------
 FORMULA = """
 [0] 5 minute Close Greater than [-1] 5 minute Max (20, [0] 5 minute Close)
@@ -91,9 +81,10 @@ Daily Volume Greater than 100000
 @app.get("/stocks")
 def stocks():
     try:
+        # Use a session to persist cookies
         session = requests.Session()
 
-        # Step 1: Open Chartink page (sets cookies)
+        # Step 1: visit Chartink homepage to get cookies
         session.get(
             "https://chartink.com/screener",
             headers={
@@ -102,31 +93,22 @@ def stocks():
             timeout=10
         )
 
-        # Step 2: Submit screener
+        # Step 2: submit the formula
         response = session.post(
             "https://chartink.com/screener/process",
             headers={
                 "User-Agent": "Mozilla/5.0",
                 "Content-Type": "application/x-www-form-urlencoded",
-                "Referer": "https://chartink.com/screener",
+                "Referer": "https://chartink.com/screener"
             },
-            data={
-                "scan_clause": FORMULA
-            },
+            data={"scan_clause": FORMULA},
             timeout=10
         )
 
         data = response.json()
+        # Return top 10 stocks
         return data.get("data", [])[:10]
 
     except Exception as e:
-        print("Chartink error:", e)
+        print("Chartink scraping error:", e)
         return []
-
-
-# -----------------------------
-# Healthcheck (Railway)
-# -----------------------------
-@app.get("/health")
-def health():
-    return {"status": "ok"}

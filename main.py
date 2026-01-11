@@ -80,6 +80,16 @@ Daily Volume Greater than 100000
 
 @app.get("/stocks")
 def stocks():
+    return [
+        {"nsecode": "SBIN", "close": 623.4, "volume": 1452230},
+        {"nsecode": "ICICIBANK", "close": 1012.5, "volume": 987654},
+        {"nsecode": "TCS", "close": 3410.0, "volume": 543210},
+    ]
+
+
+"""
+@app.get("/stocks")
+def stocks():
     try:
         # Use a session to persist cookies
         session = requests.Session()
@@ -112,3 +122,6 @@ def stocks():
     except Exception as e:
         print("Chartink scraping error:", e)
         return []
+
+
+"""

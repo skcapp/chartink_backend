@@ -21,6 +21,10 @@ class ActivateRequest(BaseModel):
     device_id: str
     code: str
 
+# -----------------------------
+# Root & Health
+# -----------------------------
+
 
 @app.get("/")
 def root():
@@ -36,7 +40,6 @@ def health():
 def status(device_id: str):
     if device_id not in devices:
         return {"status": "TRIAL", "days_left": TRIAL_DAYS}
-
     expiry = devices[device_id]
     if datetime.utcnow() > expiry:
         return {"status": "EXPIRED"}
@@ -63,8 +66,9 @@ def activate(req: ActivateRequest):
 
 
 # -----------------------------
-# Chartink screener
+# Chartink Scraper
 # -----------------------------
+# Replace this formula with any Chartink formula you want
 FORMULA = """
 [0] 5 minute Close Greater than [-1] 5 minute Max (20, [0] 5 minute Close)
 AND
@@ -80,30 +84,17 @@ Daily Volume Greater than 100000
 
 @app.get("/stocks")
 def stocks():
-    return [
-        {"nsecode": "SBIN", "close": 623.4, "volume": 1452230},
-        {"nsecode": "ICICIBANK", "close": 1012.5, "volume": 987654},
-        {"nsecode": "TCS", "close": 3410.0, "volume": 543210},
-    ]
-
-
-"""
-@app.get("/stocks")
-def stocks():
     try:
-        # Use a session to persist cookies
         session = requests.Session()
 
-        # Step 1: visit Chartink homepage to get cookies
+        # Step 1: Open Chartink homepage to get session cookies
         session.get(
             "https://chartink.com/screener",
-            headers={
-                "User-Agent": "Mozilla/5.0"
-            },
+            headers={"User-Agent": "Mozilla/5.0"},
             timeout=10
         )
 
-        # Step 2: submit the formula
+        # Step 2: Submit screener formula
         response = session.post(
             "https://chartink.com/screener/process",
             headers={
@@ -121,7 +112,5 @@ def stocks():
 
     except Exception as e:
         print("Chartink scraping error:", e)
+        # Return empty list on error to avoid Flutter crash
         return []
-
-
-"""

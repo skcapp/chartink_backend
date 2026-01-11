@@ -1,11 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from license_manager import check_status, activate
+from license_manager import init_db, check_status, activate
 from chartink_fetcher import fetch_stocks
 
 app = FastAPI()
 
-# Allow Flutter from anywhere
+init_db()  # VERY IMPORTANT
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,7 +17,7 @@ app.add_middleware(
 
 @app.get("/")
 def home():
-    return {"status": "Chartink Backend Running"}
+    return {"status": "RUNNING"}
 
 
 @app.get("/status/{device_id}")
@@ -30,10 +31,10 @@ def activate_device(data: dict):
     code = data.get("code")
 
     if not device_id or not code:
-        raise HTTPException(status_code=400, detail="Missing data")
+        raise HTTPException(400, "Missing data")
 
     if not activate(device_id, code):
-        raise HTTPException(status_code=400, detail="Invalid or used code")
+        raise HTTPException(400, "Invalid or already used code")
 
     return {"status": "ACTIVE"}
 
@@ -41,8 +42,6 @@ def activate_device(data: dict):
 @app.get("/stocks")
 def stocks(device_id: str):
     state = check_status(device_id)
-
     if state["status"] == "EXPIRED":
-        raise HTTPException(status_code=403, detail="Trial expired")
-
+        raise HTTPException(403, "Trial expired")
     return fetch_stocks()

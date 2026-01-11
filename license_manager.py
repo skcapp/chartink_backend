@@ -1,39 +1,51 @@
 from datetime import datetime, timedelta
 
-# Hardcoded secure activation codes (single-use)
+TRIAL_DAYS = 30
+
+# In-memory DB (Railway restarts safe for demo; DB can be added later)
+USERS = {}
+
 ACTIVATION_CODES = {
     "CHARTINK-001": False,
     "CHARTINK-002": False,
     "CHARTINK-003": False,
 }
 
-USERS = {}
-TRIAL_DAYS = 30
-
 
 def check_status(device_id: str):
-    user = USERS.get(device_id)
-    if not user:
-        USERS[device_id] = {"start": datetime.utcnow(), "active": False}
+    if device_id not in USERS:
+        USERS[device_id] = {
+            "start_date": datetime.utcnow(),
+            "activated": False
+        }
         return {"status": "TRIAL", "days_left": TRIAL_DAYS}
 
-    if user["active"]:
+    user = USERS[device_id]
+
+    if user["activated"]:
         return {"status": "ACTIVE"}
 
-    days_left = TRIAL_DAYS - (datetime.utcnow() - user["start"]).days
+    days_used = (datetime.utcnow() - user["start_date"]).days
+    days_left = TRIAL_DAYS - days_used
+
     if days_left <= 0:
         return {"status": "EXPIRED"}
 
     return {"status": "TRIAL", "days_left": days_left}
 
 
-def activate_device(device_id: str, code: str):
-    # Check if code exists and unused
+def activate(device_id: str, code: str):
     if code not in ACTIVATION_CODES:
         return False
+
     if ACTIVATION_CODES[code]:
         return False  # already used
 
-    USERS[device_id]["active"] = True
+    USERS.setdefault(device_id, {
+        "start_date": datetime.utcnow(),
+        "activated": False
+    })
+
+    USERS[device_id]["activated"] = True
     ACTIVATION_CODES[code] = True
     return True
